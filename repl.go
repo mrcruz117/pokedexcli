@@ -1,3 +1,4 @@
+// pokeapi "github.com/mrcruz117/pokedexcli/internal/pokeapi"
 package main
 
 import (
@@ -15,6 +16,37 @@ type config struct {
 	prevLocationsURL *string
 }
 
+func startRepl(cfg *config) {
+	reader := bufio.NewScanner(os.Stdin)
+	for {
+		fmt.Print("Pokedex > ")
+		reader.Scan()
+
+		words := cleanInput(reader.Text())
+		if len(words) == 0 {
+			continue
+		}
+
+		commandName := words[0]
+		args := []string{}
+		if len(words) > 1 {
+			args = words[1:]
+		}
+
+		command, exists := getCommands()[commandName]
+		if exists {
+			err := command.callback(cfg, args...)
+			if err != nil {
+				fmt.Println(err)
+			}
+			continue
+		} else {
+			fmt.Println("Unknown command")
+			continue
+		}
+	}
+}
+
 func cleanInput(text string) []string {
 	output := strings.ToLower(text)
 	words := strings.Fields(output)
@@ -24,24 +56,7 @@ func cleanInput(text string) []string {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
-}
-
-func commandHelp(cfg *config) error {
-	fmt.Println()
-	fmt.Println("Welcome to the Pokedex!")
-	fmt.Println("Usage:")
-	fmt.Println()
-	for _, cmd := range getCommands() {
-		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
-	}
-	fmt.Println()
-	return nil
-}
-func commandExit(cfg *config) error {
-	fmt.Println("Goodbye!")
-	os.Exit(0)
-	return nil
+	callback    func(*config, ...string) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -50,6 +65,11 @@ func getCommands() map[string]cliCommand {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    commandHelp,
+		},
+		"explore": {
+			name:        "explore <location_name>",
+			description: "Explore a location",
+			callback:    commandExplore,
 		},
 		"map": {
 			name:        "map",
@@ -66,32 +86,5 @@ func getCommands() map[string]cliCommand {
 			description: "Exit the Pokedex",
 			callback:    commandExit,
 		},
-	}
-}
-
-func startRepl(cfg *config) {
-	reader := bufio.NewScanner(os.Stdin)
-	for {
-		fmt.Print("Pokedex > ")
-		reader.Scan()
-
-		words := cleanInput(reader.Text())
-		if len(words) == 0 {
-			continue
-		}
-
-		commandName := words[0]
-
-		command, exists := getCommands()[commandName]
-		if exists {
-			err := command.callback(cfg)
-			if err != nil {
-				fmt.Println(err)
-			}
-			continue
-		} else {
-			fmt.Println("Unknown command")
-			continue
-		}
 	}
 }
